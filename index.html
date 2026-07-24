@@ -48,11 +48,12 @@
             margin-bottom: 5px;
         }
 
+        /* আনমিউট নোটিশ ডিজাইন যা এখন ক্লিক করার উপযোগী বাটন হিসেবে কাজ করবে */
         .top-unmute-notice {
             width: 390px;
             background-color: #1a1d29;
             padding: 12px 15px;
-            border-left: 3px solid #ff3333;
+            border-left: 3px solid #00d2ff;
             border-radius: 4px;
             font-size: 13px;
             line-height: 1.4;
@@ -61,6 +62,11 @@
             margin-bottom: 15px;
             box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
             text-align: left;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .top-unmute-notice:hover {
+            background-color: #222636;
         }
         .timer-highlight {
             color: #ffcc00;
@@ -85,6 +91,7 @@
             height: 100%;
             z-index: 90;
             background: transparent;
+            pointer-events: none; /* যাতে ভিডিওর ওপর ক্লিক করলে কোনো ইন্টারফেয়ার না করে */
         }
 
         .player-container iframe {
@@ -280,6 +287,9 @@
             }
         }
     </style>
+    
+    <!-- ইউটিউব আইফ্রেম এপিআই স্ক্রিপ্ট যুক্ত করা হলো যাতে কোডের মাধ্যমে সাউন্ড অন করা যায় -->
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
 
@@ -302,8 +312,9 @@
         <h1>Commonwealth Games Live Stream HD</h1>
     </div>
 
-    <div class="top-unmute-notice" id="notice-container">
-        📢 Stream is muted. Audio channels & Full Screen will automatically unlock in <span class="timer-highlight" id="countdown-timer">01:00</span> mins. Please wait for sync.
+    <!-- ওপরের এই নোটিশে ক্লিক করলেই সাউন্ড অন হয়ে যাবে -->
+    <div class="top-unmute-notice" id="unmute-btn" onclick="enableSound()">
+        🔊 <b>Click Here to Unmute Stream:</b> Audio & Full Screen is currently muted. Click here to enable sound instantly!
     </div>
 
     <div class="player-container">
@@ -324,8 +335,8 @@
             <div class="secure-footer">🔒 Unlocks Audio & Full-Screen instantly • Takes 30s</div>
         </div>
         
-        <!-- ইউটিউব ভিডিও এমবেড (AdDibG8mYlI) -->
-        <iframe src="https://www.youtube.com/embed/AdDibG8mYlI?autoplay=1&mute=1&enablejsapi=1" allowfullscreen="true" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" title="YouTube video player"></iframe>
+        <!-- ইউটিউব ভিডিও এমবেড (আইডি সহ এবং enablejsapi=1 যুক্ত) -->
+        <iframe id="yt-player" src="https://www.youtube.com/embed/AdDibG8mYlI?autoplay=1&mute=1&enablejsapi=1" allowfullscreen="true" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" title="YouTube video player"></iframe>
     </div>
     
     <div class="header">
@@ -394,9 +405,25 @@
     </div>
 
     <script>
+        let player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('yt-player', {
+                events: {}
+            });
+        }
+
+        // ওপরের নোটিশে ক্লিক করলে এই ফাংশনটি কল হবে এবং সাউন্ড অন করে নোটিশটি সরিয়ে দেবে
+        function enableSound() {
+            if (player && typeof player.unMute === 'function') {
+                player.unMute();
+                player.setVolume(100);
+            }
+            // সাউন্ড অন হওয়ার পর নোটিশটি হাইড হয়ে যাবে বা বদলে যাবে
+            const notice = document.getElementById('unmute-btn');
+            notice.style.display = 'none';
+        }
+
         const totalDuration = 60;
-        const timerElement = document.getElementById('countdown-timer');
-        const noticeContainer = document.getElementById('notice-container');
         const offerOverlay = document.getElementById('offer-overlay');
 
         function setCookie(name, value, days) {
@@ -421,8 +448,8 @@
         }
 
         function lockPlayerAndShowOffer() {
-            noticeContainer.style.borderLeft = "3px solid #00d2ff";
-            noticeContainer.innerHTML = "⚠️ <b>Region Restricted:</b> Free streaming bandwidth for your country is currently limited. Verify your location with a free account to instantly unlock full-screen mode and HD audio!";
+            const notice = document.getElementById('unmute-btn');
+            if(notice) notice.style.display = 'none';
             offerOverlay.style.display = "flex";
         }
 
@@ -448,12 +475,6 @@
                     localStorage.setItem('stream_locked', 'true');
                     setCookie('stream_locked', 'true', 1);
                     lockPlayerAndShowOffer();
-                } else {
-                    let minutes = Math.floor(remainingTime / 60);
-                    let seconds = remainingTime % 60;
-                    minutes = minutes < 10 ? '0' + minutes : minutes;
-                    seconds = seconds < 10 ? '0' + seconds : seconds;
-                    timerElement.textContent = `${minutes}:${seconds}`;
                 }
             }, 1000);
         }
